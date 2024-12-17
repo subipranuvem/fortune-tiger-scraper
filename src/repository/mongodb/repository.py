@@ -30,7 +30,7 @@ class MongoRepository(FortuneTigerRepository):
         """
         Save a document to the MongoDB collection.
         """
-        document = data.model_dump()  # Convert Pydantic model to a dictionary
+        document = data.model_dump(mode="json")
         result = self.collection.insert_one(document)
         return str(result.inserted_id)  # Return the inserted document's ID
 

@@ -1,0 +1,2 @@
+from scraper.subscriber.interface import FortuneTigerSubscriber
+from scraper.subscriber.repository_subscriber import RepositorySubscriber

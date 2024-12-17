@@ -37,7 +37,7 @@ class TikaImageRecognizer(ScraperImageRecognizer):
         except Exception as e:
             return 0
 
-    def get_balance(self, screenshot: Screenshot) -> int:
+    def get_balance_in_cents(self, screenshot: Screenshot) -> int:
         image = Image.open(BytesIO(screenshot.image_bytes))
         pl = 0
         pr = int(image.width / 3) + 20  # 20 is an offset

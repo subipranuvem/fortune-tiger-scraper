@@ -1,5 +1,9 @@
+from logging import getLogger
+
 from model.data import FortuneTigerData
 from repository.fortune_tiger_interface import FortuneTigerRepository
+
+logger = getLogger(__name__)
 
 
 class RepositorySubscriber:
@@ -11,4 +15,4 @@ class RepositorySubscriber:
 
     def process_data(self, data: FortuneTigerData):
         inserted_id = self.repository.save_data(data)
-        print(inserted_id)
+        logger.info(f"inserted data with id: {inserted_id}")

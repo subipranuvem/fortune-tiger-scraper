@@ -21,7 +21,7 @@ class ScraperImageRecognizer(ABC):
         pass
 
     @abstractmethod
-    def get_balance(self, screenshot: Screenshot) -> int:
+    def get_balance_in_cents(self, screenshot: Screenshot) -> int:
         """
         Get the value of  given the screenshot
         :param Screenshot: Game screenshot in PNG format.

@@ -9,7 +9,7 @@ services:
       MONGO_INITDB_ROOT_USERNAME: user
       MONGO_INITDB_ROOT_PASSWORD: pass
     volumes:
-      - .data/mongodb_data:/data/db
+      - db-data:/data/db
     deploy:
       resources:
         limits:
@@ -47,3 +47,6 @@ services:
         limits:
           # Check valid values: https://docs.docker.com/reference/compose-file/extension/#specifying-byte-values
           memory: 1gb
+
+volumes:
+  db-data:

@@ -82,7 +82,7 @@ class FortuneTigerScraper:
                 if is_game_blocked:
                     self._logger.warning(f"game is blocked")
                     driver.quit()
-                    driver = self._create_webdriver()
+                    driver = self._create_webdriver(headless)
             self._click_turbo_button(game)
             have_balance = True
             while have_balance:

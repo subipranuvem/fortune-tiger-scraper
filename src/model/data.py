@@ -69,6 +69,6 @@ class FortuneTigerData(BaseModel):
     @property
     def current_balance(self) -> int:
         try:
-            return int(self.response.body["dt"]["si"]["tb"])
+            return int(self.response.body["dt"]["si"]["bl"])
         except Exception as e:
             return 0

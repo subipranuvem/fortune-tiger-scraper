@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Dict
 from urllib.parse import parse_qs
 
@@ -25,6 +26,7 @@ class FortuneTigerResponse(BaseModel):
     status_code: int = Field(gt=100, lt=600)
     headers: Dict = Field()
     body: Dict = Field()
+    date: datetime = Field()
 
 
 class FortuneTigerData(BaseModel):
@@ -60,5 +62,13 @@ class FortuneTigerData(BaseModel):
     def win_amount(self) -> int:
         try:
             return int(self.response.body["dt"]["si"]["tw"])
+        except Exception as e:
+            return 0
+
+    @computed_field
+    @property
+    def current_balance(self) -> int:
+        try:
+            return int(self.response.body["dt"]["si"]["tb"])
         except Exception as e:
             return 0

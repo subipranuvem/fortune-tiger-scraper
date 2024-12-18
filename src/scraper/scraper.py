@@ -62,9 +62,10 @@ class FortuneTigerScraper:
     def scrape_data(
         self,
         subscribers: List[FortuneTigerSubscriber],
+        headless: bool = True,
     ) -> None:
         try:
-            driver = self._create_webdriver()
+            driver = self._create_webdriver(headless)
             is_game_blocked = True
             while is_game_blocked:
                 self._logger.info(f"accessing game url")
@@ -85,7 +86,7 @@ class FortuneTigerScraper:
             self._click_turbo_button(game)
             have_balance = True
             while have_balance:
-                self._click_bet_button(game)
+                self._start_automate_bet(game)
                 is_able_to_play = False
                 while not is_able_to_play:
                     is_able_to_play = (
@@ -94,8 +95,8 @@ class FortuneTigerScraper:
                         )
                     )
                     if not is_able_to_play:
-                        self._logger.info(f"waiting the game to play")
-                        time.sleep(0.3)
+                        self._logger.info(f"waiting the game to play again")
+                        time.sleep(1)
                 self._notify_subscribers(driver, subscribers)
                 balance_in_cents = self._image_recognizer.get_balance_in_cents(
                     screenshot=game.take_screenshot()
@@ -103,13 +104,16 @@ class FortuneTigerScraper:
                 BalancePrinter.print_balance(self._logger, balance_in_cents)
                 have_balance = balance_in_cents > 0
         except Exception as e:
-            self._logger.error(f"error at scraper execution: {e}")
+            self._logger.error(f"error at scraper execution: {e}", exc_info=True)
         finally:
             if driver is not None:
+                driver.close()
                 driver.quit()
 
-    def _create_webdriver(self) -> webdriver.Remote:
+    def _create_webdriver(self, headless: bool) -> webdriver.Remote:
         chrome_options = uc.ChromeOptions()
+        if headless:
+            chrome_options.add_argument("--headless")
         driver = webdriver.Chrome(
             options=chrome_options,
         )
@@ -159,6 +163,30 @@ class FortuneTigerScraper:
         self._logger.info("clicked turbo button")
         time.sleep(1)
 
+    def _start_automate_bet(self, game: FortuneTigerGame) -> None:
+        x = game.game_canvas_width
+        y = game.game_canvas_height
+        game.action_chains.move_to_element_with_offset(
+            game.game_canvas,
+            randrange(int((x / 100) * 38), int((x / 100) * 41)),
+            randrange(int((y / 100) * 36), int((y / 100) * 39)),
+        ).click().perform()
+        self._logger.info("clicked auto button")
+        time.sleep(1)
+        game.action_chains.move_to_element_with_offset(
+            game.game_canvas,
+            randrange(int((x / 100) * 30), int((x / 100) * 35)) * -1,
+            randrange(int((y / 100) * 27), int((y / 100) * 30)),
+        ).click().perform()
+        self._logger.info("clicked 10")
+        time.sleep(1)
+        game.action_chains.move_to_element_with_offset(
+            game.game_canvas,
+            randrange(int((x / 100) * 0), int((x / 100) * 5)),
+            randrange(int((y / 100) * 37), int((y / 100) * 40)),
+        ).click().perform()
+        self._logger.info("starting auto bet")
+
     def _click_bet_button(self, game: FortuneTigerGame) -> None:
         x = game.game_canvas_width
         y = game.game_canvas_height
@@ -174,35 +202,37 @@ class FortuneTigerScraper:
     ) -> None:
         try:
             self._logger.info("notifying subscribers")
-            request = driver.requests[-1]
-            response = request.response
-            if response.status_code != HTTPStatus.OK or "Spin" not in request.path:
-                return None
-            if "gzip" not in response.headers.get("content-encoding"):
-                return None
-            uncompressed_body = gzip.decompress(response.body)
-            response_data = json.loads(uncompressed_body)
-            fortune_tiger_request = FortuneTigerRequest(
-                body=parse_qs(request.body.decode()),
-                headers=dict(request.headers),
-                host=request.host,
-                method=request.method,
-                path=request.path,
-                url=request.url,
-                query_string=request.querystring,
-            )
-            fortune_tiger_response = FortuneTigerResponse(
-                headers=dict(response.headers),
-                status_code=response.status_code,
-                body=response_data,
-            )
-            fortune_tiger_data = FortuneTigerData(
-                request=fortune_tiger_request,
-                response=fortune_tiger_response,
-            )
-            for subscriber in subscribers:
-                subscriber.process_data(data=fortune_tiger_data)
-            self._logger.info("subscribers notified")
+
+            for request in driver.iter_requests():
+                response = request.response
+                if response.status_code != HTTPStatus.OK or "Spin" not in request.path:
+                    continue
+                if "gzip" not in response.headers.get("content-encoding"):
+                    continue
+                uncompressed_body = gzip.decompress(response.body)
+                response_data = json.loads(uncompressed_body)
+                fortune_tiger_request = FortuneTigerRequest(
+                    body=parse_qs(request.body.decode()),
+                    headers=dict(request.headers),
+                    host=request.host,
+                    method=request.method,
+                    path=request.path,
+                    url=request.url,
+                    query_string=request.querystring,
+                )
+                fortune_tiger_response = FortuneTigerResponse(
+                    headers=dict(response.headers),
+                    status_code=response.status_code,
+                    body=response_data,
+                    date=response.date,
+                )
+                fortune_tiger_data = FortuneTigerData(
+                    request=fortune_tiger_request,
+                    response=fortune_tiger_response,
+                )
+                for subscriber in subscribers:
+                    subscriber.process_data(data=fortune_tiger_data)
+            self._logger.info("all subscribers notified")
         except Exception as e:
             self._logger.error(f"error at notifying subscribers: {e}")
         finally:

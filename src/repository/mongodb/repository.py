@@ -43,3 +43,27 @@ class MongoRepository(FortuneTigerRepository):
             return True
         except ServerSelectionTimeoutError:
             return False
+
+    def create_collection(self) -> bool:
+        existing_collections = self.database.list_collection_names()
+        if self._config.collection_name not in existing_collections:
+            self.database.create_collection(self._config.collection_name)
+            self.collection = self.database[self._config.collection_name]
+
+            self.collection.create_index([("game_id", 1)])
+            self.collection.create_index([("bet_profit", 1)])
+            self.collection.create_index([("bet_amount", 1)])
+            self.collection.create_index([("win_amount", 1)])
+            self.collection.create_index([("current_balance", 1)])
+            self.collection.create_index([("response.date", 1)])
+
+            self.collection.create_index([("game_id", -1)])
+            self.collection.create_index([("bet_profit", -1)])
+            self.collection.create_index([("bet_amount", -1)])
+            self.collection.create_index([("win_amount", -1)])
+            self.collection.create_index([("current_balance", -1)])
+            self.collection.create_index([("response.date", -1)])
+
+    def close(self) -> None:
+        if self.client:
+            self.client.close()

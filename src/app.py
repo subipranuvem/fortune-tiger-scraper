@@ -24,19 +24,27 @@ class App:
                 collection_name="fortune_tiger_logs",
             )
         )
-        is_repository_alive = repository.ping()
-        if not is_repository_alive:
-            self._logger.error("repository is not reacheable")
-            return None
-        subscribers: List[FortuneTigerSubscriber] = [RepositorySubscriber(repository)]
-        image_recognizer: ScraperImageRecognizer = TikaImageRecognizer(
-            address="http://localhost:9998"
-        )
-
-        scraper = FortuneTigerScraper(image_recognizer=image_recognizer)
-        scraper.scrape_data(
-            subscribers=subscribers,
-        )
+        try:
+            is_repository_alive = repository.ping()
+            if not is_repository_alive:
+                self._logger.error("repository is not reacheable")
+                return
+            repository.create_collection()
+            subscribers: List[FortuneTigerSubscriber] = [
+                RepositorySubscriber(repository)
+            ]
+            image_recognizer: ScraperImageRecognizer = TikaImageRecognizer(
+                address="http://localhost:9998"
+            )
+            scraper = FortuneTigerScraper(image_recognizer=image_recognizer)
+            scraper.scrape_data(
+                subscribers=subscribers,
+                headless=False,
+            )
+        except Exception as e:
+            self._logger.error(f"some error ocurred: {e}")
+        finally:
+            repository.close()
 
 
 if __name__ == "__main__":

@@ -18,6 +18,7 @@ from seleniumwire import webdriver
 
 from model.data import FortuneTigerData, FortuneTigerRequest, FortuneTigerResponse
 from scraper.balance_printer import BalancePrinter
+from scraper.exceptions import GameFroze, GameIsBlocked
 from scraper.image_recognizer import ScraperImageRecognizer, Screenshot
 from scraper.subscriber.interface import FortuneTigerSubscriber
 
@@ -80,14 +81,14 @@ class FortuneTigerScraper:
                 self._raise_bet(game)
                 is_game_blocked = self._check_if_game_is_blocked(game)
                 if is_game_blocked:
-                    self._logger.warning(f"game is blocked")
-                    driver.quit()
-                    driver = self._create_webdriver(headless)
+                    raise GameIsBlocked("game is blocked")
             self._click_turbo_button(game)
             have_balance = True
             while have_balance:
                 self._start_automate_bet(game)
                 is_able_to_play = False
+                quantity_of_tries = 0
+                max_quantity_of_tries = 30
                 while not is_able_to_play:
                     is_able_to_play = (
                         self._image_recognizer.check_if_is_enabled_to_play(
@@ -96,7 +97,10 @@ class FortuneTigerScraper:
                     )
                     if not is_able_to_play:
                         self._logger.info(f"waiting the game to play again")
+                        max_quantity_of_tries += 1
                         time.sleep(1)
+                    if quantity_of_tries >= max_quantity_of_tries:
+                        raise GameFroze("game has froze")
                 self._notify_subscribers(driver, subscribers)
                 balance_in_cents = self._image_recognizer.get_balance_in_cents(
                     screenshot=game.take_screenshot()
@@ -105,6 +109,7 @@ class FortuneTigerScraper:
                 have_balance = balance_in_cents > 0
         except Exception as e:
             self._logger.error(f"error at scraper execution: {e}", exc_info=True)
+            raise e
         finally:
             if driver is not None:
                 driver.close()
